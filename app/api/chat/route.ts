@@ -9,6 +9,7 @@ import {
   MessagesAnnotation,
   StateGraph,
   MemorySaver,
+  Annotation,
 } from "@langchain/langgraph";
 import { v4 as uuidv4 } from 'uuid';
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -47,6 +48,7 @@ const config = { configurable: { thread_id: uuidv4() } };
 
 
 
+/// prompt with messages ------------------------2nd-------------------
 const promptTemplate = ChatPromptTemplate.fromMessages([
   [
     "system",
@@ -56,7 +58,7 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
 ]);
 
 
-// Define the function that calls the model (---------------2nd -------------------)
+// Define the function that calls the model 
 const callModel2 = async (state: typeof MessagesAnnotation.State) => {
   const prompt = await promptTemplate.invoke(state);
   const response = await llm.invoke(prompt);
@@ -77,6 +79,44 @@ const app2 = workflow2.compile({ checkpointer: new MemorySaver() });
 
 
 
+
+
+
+// prompt with language and messages ------------------------3rd-------------------
+const promptTemplate2 = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    "You are a helpful assistant. Answer all questions to the best of your ability in {language}.",
+  ],
+  ["placeholder", "{messages}"],
+]);
+
+
+// Define the State
+const GraphAnnotation = Annotation.Root({
+  ...MessagesAnnotation.spec,
+  language: Annotation<string>(),
+});
+
+// Define the function that calls the model
+const callModel3 = async (state: typeof GraphAnnotation.State) => {
+  const prompt = await promptTemplate2.invoke(state);
+  const response = await llm.invoke(prompt);
+  return { messages: [response] };
+};
+
+const workflow3 = new StateGraph(GraphAnnotation)
+  .addNode("model", callModel3)
+  .addEdge(START, "model")
+  .addEdge("model", END);
+
+const app3 = workflow3.compile({ checkpointer: new MemorySaver() });
+
+
+
+
+
+
 export const POST = async (request: Request) => {
   try {
     const { message } = await request.json();
@@ -85,11 +125,13 @@ export const POST = async (request: Request) => {
       return NextResponse.json({ error: 'Invalid message' }, { status: 400 });
     }
 
-    const input = [{ role: "user", content: message }];
+    // const input = [{ role: "user", content: message }];
+    const input = {messages: [{ role: "user", content: message }], language: "Bangla"};
 
     // Chat response from AI
     //const chatResponseFromAI = await app.invoke({messages: input}, config);
-    const chatResponseFromAI = await app2.invoke({ messages: input }, config);
+    // const chatResponseFromAI = await app2.invoke({ messages: input }, config);
+    const chatResponseFromAI = await app3.invoke(input, config);
 
 
 
