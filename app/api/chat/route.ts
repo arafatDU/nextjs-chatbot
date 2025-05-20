@@ -119,21 +119,18 @@ const app3 = workflow3.compile({ checkpointer: new MemorySaver() });
 
 export const POST = async (request: Request) => {
   try {
-    const { message } = await request.json();
+    const { message, language } = await request.json();
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Invalid message' }, { status: 400 });
     }
 
-    // const input = [{ role: "user", content: message }];
-    const input = {messages: [{ role: "user", content: message }], language: "Bangla"};
+    // Use provided language or default to English
+    const lang = language && typeof language === 'string' ? language : 'English';
+    const input = {messages: [{ role: "user", content: message }], language: lang};
 
     // Chat response from AI
-    //const chatResponseFromAI = await app.invoke({messages: input}, config);
-    // const chatResponseFromAI = await app2.invoke({ messages: input }, config);
     const chatResponseFromAI = await app3.invoke(input, config);
-
-
 
     // Normalize messages to array of objects with role/content
     let messagesArr = chatResponseFromAI.messages;
@@ -143,8 +140,6 @@ export const POST = async (request: Request) => {
     // Try to infer role if missing (Gemini may not set role)
     const aiMsg = messagesArr.reverse().find((msg: any) => (msg.role === 'assistant') || (!msg.role && msg.content));
     console.log("Latest AI message:", aiMsg);
-
-
 
     if (!aiMsg) {
       return NextResponse.json({ response: "No response." });

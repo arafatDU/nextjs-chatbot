@@ -1,7 +1,11 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { getChatResponse } from "./utils/api";
 import ReactMarkdown from "react-markdown";
+
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Chinese", "Japanese", "Korean", "Hindi", "Arabic", "Portuguese", "Russian", "Italian", "Dutch", "Turkish", "Bengali", "Polish", "Ukrainian", "Romanian", "Greek", "Czech", "Swedish", "Hungarian", "Finnish", "Danish", "Norwegian", "Hebrew", "Thai", "Vietnamese", "Indonesian", "Malay", "Filipino", "Swahili", "Persian", "Urdu", "Tamil", "Telugu", "Marathi", "Gujarati", "Punjabi", "Malayalam", "Kannada", "Burmese", "Khmer", "Lao", "Sinhala", "Slovak", "Bulgarian", "Serbian", "Croatian", "Slovenian", "Estonian", "Latvian", "Lithuanian", "Icelandic", "Georgian", "Armenian", "Albanian", "Macedonian", "Basque", "Catalan", "Galician", "Welsh", "Irish", "Scottish Gaelic", "Yiddish", "Haitian Creole"
+];
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -16,6 +20,9 @@ export default function Home() {
     }
     return "dark";
   });
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,6 +33,17 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
+  const filteredLanguages = React.useMemo(() => {
+    if (!languageSearch.trim()) return LANGUAGES;
+    return LANGUAGES.filter(l => l.toLowerCase().includes(languageSearch.toLowerCase()));
+  }, [languageSearch]);
+
+  const handleLanguageSelect = (lang: string) => {
+    setSelectedLanguage(lang);
+    setLanguageDropdownOpen(false);
+    setLanguageSearch("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -35,7 +53,7 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     try {
-      const data = await getChatResponse(input);
+      const data = await getChatResponse(input, selectedLanguage);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.response || "No response." },
@@ -112,12 +130,50 @@ export default function Home() {
       <form
         onSubmit={handleSubmit}
         className="fixed left-0 w-full flex justify-center items-center z-30 transition-colors duration-300"
-        style={{ bottom: '40px', pointerEvents: 'none' }}
+        style={{ bottom: '80px', pointerEvents: 'none' }}
       >
         <div
           className={`w-full max-w-4xl flex gap-2 rounded-full shadow-lg border ${theme === "dark" ? "bg-[#40414f]/95 border-[#353740]" : "bg-white/90 border-blue-100"} py-3 px-4 items-center pointer-events-auto`}
           style={{ backdropFilter: 'blur(6px)' }}
         >
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-200 bg-white dark:bg-[#353740] text-gray-700 dark:text-gray-100 shadow-sm hover:bg-blue-50 dark:hover:bg-[#22242c] focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[110px]"
+              onClick={() => setLanguageDropdownOpen((v) => !v)}
+              tabIndex={0}
+            >
+              <span className="truncate max-w-[80px]">{selectedLanguage}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            {languageDropdownOpen && (
+              <div className="absolute left-0 bottom-14 w-56 bg-white dark:bg-[#353740] border border-blue-200 dark:border-[#353740] rounded-xl shadow-lg z-50 p-2 flex flex-col" style={{maxHeight: '320px'}}>
+                <input
+                  type="text"
+                  className="w-full mb-2 px-3 py-2 rounded border border-blue-200 dark:border-[#353740] bg-white dark:bg-[#22242c] text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Search language..."
+                  value={languageSearch}
+                  onChange={e => setLanguageSearch(e.target.value)}
+                  autoFocus
+                />
+                <div className="max-h-56 overflow-y-auto">
+                  {filteredLanguages.length === 0 && (
+                    <div className="text-gray-400 text-sm px-2 py-1">No match</div>
+                  )}
+                  {filteredLanguages.map(lang => (
+                    <button
+                      key={lang}
+                      type="button"
+                      className={`w-full text-left px-3 py-2 rounded hover:bg-blue-100 dark:hover:bg-[#22242c] ${lang === selectedLanguage ? 'bg-blue-100 dark:bg-[#22242c] font-semibold' : ''}`}
+                      onClick={() => handleLanguageSelect(lang)}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex-1 flex items-center bg-transparent">
             <input
               type="text"
